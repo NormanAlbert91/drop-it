@@ -8,7 +8,9 @@ const UP = new THREE.Vector3(0, 1, 0);
 // Visible ball radius (exaggerated for the stylized look). Physics uses the true
 // mm radius elsewhere; this is purely what the eye sees during the fall.
 export function displayRadius(sizeMm: number): number {
-  const t = THREE.MathUtils.clamp(THREE.MathUtils.inverseLerp(1, 20, sizeMm), 0, 1);
+  // 1..20 mm keeps its original min..max slope; beyond 20 the radius keeps
+  // growing (extrapolated, not clamped) so larger drops read as larger.
+  const t = Math.max(0, THREE.MathUtils.inverseLerp(1, 20, sizeMm));
   return THREE.MathUtils.lerp(CONFIG.drop.displayRadiusMin, CONFIG.drop.displayRadiusMax, t);
 }
 
@@ -16,10 +18,11 @@ export class Drop {
   readonly mesh: THREE.Mesh;
   readonly body: Body;
   private radius: number = CONFIG.drop.displayRadiusMin;
+  private sizeMm: number = 1;
   private readonly material: THREE.MeshStandardMaterial;
 
   constructor() {
-    const geo = new THREE.SphereGeometry(1, 32, 24);
+    const geo = new THREE.SphereGeometry(1, 64, 48);
     this.material = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       roughness: 0.25,
@@ -33,6 +36,7 @@ export class Drop {
 
   spawn(params: Params, startX: number): void {
     this.radius = displayRadius(params.sizeMm);
+    this.sizeMm = params.sizeMm;
     this.material.color.set(params.color);
     this.body.pos.set(startX, params.heightM, 0);
     this.body.vel.set(0, 0, 0);
@@ -61,7 +65,17 @@ export class Drop {
       const dir = this.body.vel.clone().normalize();
       this.mesh.quaternion.setFromUnitVectors(UP, dir);
     }
-    this.mesh.scale.set(this.radius, this.radius * stretch, this.radius);
+    // Local +Y is aligned to the travel direction. Large drops flatten along that
+    // axis (oblate) and bulge at the equator instead of reading as a teardrop.
+    const D = CONFIG.drop;
+    const oblate = THREE.MathUtils.clamp(
+      D.oblateK * (this.sizeMm - D.oblateOnsetMm),
+      0,
+      D.oblateMax,
+    );
+    const axial = stretch * (1 - oblate);
+    const equator = 1 + oblate * 0.6;
+    this.mesh.scale.set(this.radius * equator, this.radius * axial, this.radius * equator);
   }
 
   hide(): void {

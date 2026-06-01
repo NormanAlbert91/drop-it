@@ -11,8 +11,11 @@ import { Ui } from './ui.ts';
 const params = defaultParams();
 
 const container = document.getElementById('app')!;
-const paint = new Paint();
-const env = new SceneEnv(container, paint.texture);
+const env = new SceneEnv(container);
+const paint = new Paint(env.renderer);
+env.setGroundMap(paint.texture);
+const printArea = Paint.printArea(CONFIG.print.width / CONFIG.print.height);
+env.showPrintArea(printArea.w, printArea.h);
 const drop = new Drop();
 const splash = new Splash(paint);
 env.scene.add(drop.mesh);
@@ -21,7 +24,7 @@ env.scene.add(splash.mesh);
 type State = 'idle' | 'falling';
 let state: State = 'idle';
 
-const ui = new Ui(params, { onPlay: play, onClear: clearSplats });
+const ui = new Ui(params, { onPlay: play, onClear: clearSplats, onExport: exportPng });
 ui.setPlayEnabled(true);
 
 function play(): void {
@@ -36,6 +39,11 @@ function play(): void {
 
 function clearSplats(): void {
   paint.clear();
+}
+
+function exportPng(): void {
+  const ok = paint.exportPNG(CONFIG.print.width, CONFIG.print.height);
+  if (!ok) console.warn('Nichts zu exportieren — erst ein paar Tropfen werfen.');
 }
 
 function mainSplatRadius(impactSpeed: number, p: Params): number {

@@ -9,11 +9,12 @@ export class SceneEnv {
   readonly camera: THREE.PerspectiveCamera;
   readonly controls: OrbitControls;
 
+  private readonly groundMat: THREE.MeshStandardMaterial;
   private readonly targetPos = new THREE.Vector3();
   private readonly targetLook = new THREE.Vector3();
   private fitting = false;
 
-  constructor(container: HTMLElement, groundMap: THREE.Texture) {
+  constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -64,16 +65,40 @@ export class SceneEnv {
     // Ground plane (white), receives the baked splat texture + shadows.
     const geo = new THREE.PlaneGeometry(CONFIG.plane.size, CONFIG.plane.size);
     geo.rotateX(-Math.PI / 2); // lie flat in XZ, normal +Y
-    const mat = new THREE.MeshStandardMaterial({
-      map: groundMap,
+    this.groundMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
       roughness: 0.92,
       metalness: 0.0,
     });
-    const ground = new THREE.Mesh(geo, mat);
+    const ground = new THREE.Mesh(geo, this.groundMat);
     ground.receiveShadow = true;
     this.scene.add(ground);
 
     window.addEventListener('resize', () => this.resize(container));
+  }
+
+  // Wire the paint render-target texture onto the ground once Paint exists.
+  setGroundMap(map: THREE.Texture): void {
+    this.groundMat.map = map;
+    this.groundMat.needsUpdate = true;
+  }
+
+  // Outline the printable drop area on the ground (world meters, centered).
+  // paint space qx=x, qy=-z, so width spans X and height spans Z.
+  showPrintArea(w: number, h: number): void {
+    const x = w / 2;
+    const z = h / 2;
+    const y = 0.02;
+    const pts = [
+      new THREE.Vector3(-x, y, -z),
+      new THREE.Vector3(x, y, -z),
+      new THREE.Vector3(x, y, z),
+      new THREE.Vector3(-x, y, z),
+    ];
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const mat = new THREE.LineBasicMaterial({ color: 0x888888 });
+    const frame = new THREE.LineLoop(geo, mat);
+    this.scene.add(frame);
   }
 
   // Aim the camera to frame a fall of the given height. Smoothly lerped in update().

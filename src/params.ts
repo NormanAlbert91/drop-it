@@ -2,7 +2,7 @@
 export interface Params {
   heightM: number; // 1..50  — Fallhöhe
   windMs: number; // -10..10 — Windgeschwindigkeit (signed, +x direction)
-  sizeMm: number; // 1..20   — Tropfendurchmesser
+  sizeMm: number; // 1..80   — Tropfendurchmesser
   color: string; // hex      — Farbe
   viscosity: number; // 0..1 — Viskosität (0 watery, 1 thick)
 }
@@ -10,7 +10,7 @@ export interface Params {
 export const PARAM_RANGES = {
   heightM: { min: 1, max: 50, step: 0.5 },
   windMs: { min: -10, max: 10, step: 0.1 },
-  sizeMm: { min: 1, max: 20, step: 0.1 },
+  sizeMm: { min: 1, max: 80, step: 0.1 },
   viscosity: { min: 0, max: 1, step: 0.01 },
 } as const;
 

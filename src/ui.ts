@@ -4,6 +4,7 @@ import { type Params, PARAM_RANGES } from './params.ts';
 export interface UiHandlers {
   onPlay(): void;
   onClear(): void;
+  onExport(): void;
 }
 
 export class Ui {
@@ -27,9 +28,11 @@ export class Ui {
     const actions = {
       play: () => handlers.onPlay(),
       clear: () => handlers.onClear(),
+      export: () => handlers.onExport(),
     };
     this.playCtrl = this.gui.add(actions, 'play').name('▶ Play');
     this.gui.add(actions, 'clear').name('Clear Splats');
+    this.gui.add(actions, 'export').name('Export PNG (Druck)');
   }
 
   setPlayEnabled(enabled: boolean): void {

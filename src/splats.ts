@@ -32,6 +32,55 @@ function drawBlob(
   ctx.fill();
 }
 
+// Comet/teardrop masks for flung secondary droplets: a round head on the +x
+// side tapering to a thin tail toward -x, plus a couple of tiny lead specks.
+// paint.ts rotates these to the droplet's flight direction so they read as
+// directional streaks instead of round blobs. The long axis is +x (so a
+// horizontal aspect>1 stretches along the streak).
+export function generateDropletTextures(count = 4, size = 128): HTMLCanvasElement[] {
+  const out: HTMLCanvasElement[] = [];
+  for (let i = 0; i < count; i++) {
+    const c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+    const ctx = c.getContext('2d')!;
+    const rand = makeRng(0x85ebca6b ^ ((i + 1) * 2246822519));
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = '#ffffff';
+
+    const cy = size / 2;
+    const headX = size * 0.66;
+    const tailX = size * 0.14;
+    const headR = size * (0.16 + rand() * 0.05);
+
+    // Tapered body: overlapping circles shrinking from head to tail.
+    const steps = 14;
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      const x = headX + (tailX - headX) * t;
+      const r = headR * (1 - t) * (1 - t) + size * 0.012; // quadratic taper to a fine tail
+      const wobble = (rand() * 2 - 1) * size * 0.01;
+      ctx.beginPath();
+      ctx.arc(x, cy + wobble, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // A few tiny droplets thrown ahead of the head (motion lead).
+    const lead = 2 + Math.floor(rand() * 3);
+    for (let s = 0; s < lead; s++) {
+      const x = headX + size * (0.06 + rand() * 0.16);
+      const y = cy + (rand() * 2 - 1) * size * 0.06;
+      const r = size * (0.008 + rand() * 0.02);
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    out.push(c);
+  }
+  return out;
+}
+
 export function generateSplatTextures(count = 4, size = 256): HTMLCanvasElement[] {
   const out: HTMLCanvasElement[] = [];
   for (let i = 0; i < count; i++) {
@@ -46,32 +95,11 @@ export function generateSplatTextures(count = 4, size = 256): HTMLCanvasElement[
     const cx = size / 2;
     const cy = size / 2;
 
-    // Main irregular blob.
-    drawBlob(ctx, cx, cy, size * 0.3, size * 0.11, 16, rand);
-
-    // Satellite droplets flung around the core.
-    const satellites = 4 + Math.floor(rand() * 5);
-    for (let s = 0; s < satellites; s++) {
-      const ang = rand() * Math.PI * 2;
-      const dist = size * (0.28 + rand() * 0.16);
-      const sx = cx + Math.cos(ang) * dist;
-      const sy = cy + Math.sin(ang) * dist;
-      const sr = size * (0.02 + rand() * 0.05);
-      drawBlob(ctx, sx, sy, sr, sr * 0.5, 9, rand);
-    }
-
-    // Fine speckles for splatter texture.
-    const speckles = 12 + Math.floor(rand() * 16);
-    for (let s = 0; s < speckles; s++) {
-      const ang = rand() * Math.PI * 2;
-      const dist = size * (0.3 + rand() * 0.18);
-      const sx = cx + Math.cos(ang) * dist;
-      const sy = cy + Math.sin(ang) * dist;
-      const sr = size * (0.005 + rand() * 0.015);
-      ctx.beginPath();
-      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // Clean round-ish core. The flung spray is rendered as separate directional
+    // droplets (see splash.ts), so the main splat stays round — only a gentle
+    // edge wobble (lots of points, small jitter) keeps it from looking like a
+    // perfect circle.
+    drawBlob(ctx, cx, cy, size * 0.36, size * 0.025, 48, rand);
 
     out.push(c);
   }
